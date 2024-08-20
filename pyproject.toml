@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "ape_test"
+version = "0.1.0"
+description = "Use PDF files to feed Open AI Assistant and/ or RAG for the very same assistant to use for APE."
+authors = ["Gael Martins"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+openai = "^1.37.1"
+python-dotenv = "^1.0.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
