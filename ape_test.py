@@ -62,13 +62,13 @@ class PDFPagesToAssistant:
             try:
                 filename = path.name
                 # Extract filename without date and time part
-                base_filename = re.match(r'(.+?)_\d{8}_\d{6}\.pdf', filename).group(1)
+                # base_filename = re.match(r'(.+?)_\d{8}_\d{6}\.pdf', filename).group(1)
                 
                 # Check if the file already exists in OpenAI storage
                 existing_files = self.client.files.list()
                 for f in existing_files.data:
-                    if base_filename in f.filename:
-                        print(f"File with base name '{base_filename}' already exists. Deleting it...")
+                    if filename in f.filename:
+                        print(f"File with base name '{filename}' already exists. Deleting it...")
                         self.client.files.delete(f.id)
                         print(f"Deleted file with ID {f.id}")
                 
@@ -117,7 +117,7 @@ class PDFPagesToAssistant:
             # Create a new Assistant if it doesn't exist
             assistant = self.client.beta.assistants.create(
                 name=self.assistant_name,
-                instructions="You are a helpful assistant that does automated post editing based on the files provided. Try to not use any prior knowledge or external information to answer. You should provide an answer that is refined for clarity, precision, and flow.",
+                instructions="You are a helpful assistant that does automated post editing based on the files provided. If asked, the edited text will be in the language specified. Try to not use any prior knowledge or external information to answer. You should provide an answer that is refined for clarity, precision, and flow.",
                 model="gpt-4o-mini",
                 tools=[{"type": "file_search"}],
             )
