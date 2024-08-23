@@ -117,7 +117,7 @@ class PDFPagesToAssistant:
             # Create a new Assistant if it doesn't exist
             assistant = self.client.beta.assistants.create(
                 name=self.assistant_name,
-                instructions="You are a helpful assistant that does automated post editing based on the files provided. If asked, the edited text will be in the language specified. Try to not use any prior knowledge or external information to answer. You should provide an answer that is refined for clarity, precision, and flow.",
+                instructions="You are a helpful assistant that performs automated post-editing based on the provided files. Your primary goal is to enhance clarity, precision, and flow in the text while doing a post editing based on the provided files. If translation is requested, first perform the automated post-editing on the original text based on the provided files, then translate the edited text into the specified language (e.g., Text. (language)). Do not rely on prior knowledge or external information, focus solely on improving the provided content. Ensure the post-edited and translated version reflect these improvements.",
                 model="gpt-4o-mini",
                 tools=[{"type": "file_search"}],
             )
