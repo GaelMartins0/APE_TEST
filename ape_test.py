@@ -5,7 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
-class PDFPagesToAssistant:
+class FilesToAssistant:
     
     def __init__(self, overwrite: bool):
 
@@ -28,9 +28,9 @@ class PDFPagesToAssistant:
         self.vector_store_name = f"Test APE"
 
         # Define the name of the assistant
-        self.assistant_name = f"Acolad Assistant APE Test"
+        self.assistant_name = f"RAG for APE"
 
-    def upload_pages_to_vectorstorage(self):
+    def upload_files_to_vectorstorage(self):
         # List all vector stores to check if one with the same name already exists
         existing_vector_stores = self.client.beta.vector_stores.list()
         vector_store_id = None
@@ -53,16 +53,14 @@ class PDFPagesToAssistant:
         # Create a new vector store
         self.vector_store = self.client.beta.vector_stores.create(name=self.vector_store_name)
 
-        # Get list of PDF files in output_dir directory
-        file_paths = [path for path in self.OUTPUT_DIR.iterdir() if path.suffix == ".pdf"]
+        # Get list of all files in output_dir directory
+        file_paths = [path for path in self.OUTPUT_DIR.iterdir() if path.is_file()]
         file_streams = []
 
         # Try to open each file and handle any errors
         for path in file_paths:
             try:
                 filename = path.name
-                # Extract filename without date and time part
-                # base_filename = re.match(r'(.+?)_\d{8}_\d{6}\.pdf', filename).group(1)
                 
                 # Check if the file already exists in OpenAI storage
                 existing_files = self.client.files.list()
@@ -72,7 +70,7 @@ class PDFPagesToAssistant:
                         self.client.files.delete(f.id)
                         print(f"Deleted file with ID {f.id}")
                 
-                # If no matching file is found or after deletion, open the new file for upload
+                # Open the file for upload regardless of its type
                 file_streams.append(path.open("rb"))
             except Exception as e:
                 print(f"Error opening file {path}: {e}")
@@ -117,7 +115,7 @@ class PDFPagesToAssistant:
             # Create a new Assistant if it doesn't exist
             assistant = self.client.beta.assistants.create(
                 name=self.assistant_name,
-                instructions="You are a helpful assistant that performs automated post-editing based on the provided files. Your primary goal is to enhance clarity, precision, and flow in the text while doing a post editing based on the provided files. If translation is requested, first perform the automated post-editing on the original text based on the provided files, then translate the edited text into the specified language (e.g., Text. (language)). Do not rely on prior knowledge or external information, focus solely on improving the provided content. Ensure the post-edited and translated version reflect these improvements.",
+                instructions="You are a helpful assistant specializing in automated post-editing based on the provided translation files. Your primary objective is to enhance the clarity, precision, and flow of the text during the post-editing process. All edits should be made as accurately as possible, strictly according to the provided translation files. If translation is also required, first perform the automated post-editing on the original text using the provided files, then translate the edited text into the specified language (e.g., Text. (language)). Do not rely on prior knowledge or external information—focus exclusively on refining the provided content. Ensure that both the post-edited and translated versions reflect these improvements.",
                 model="gpt-4o-mini",
                 tools=[{"type": "file_search"}],
             )
@@ -136,11 +134,11 @@ def main():
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing vector store if it exists")
     args = parser.parse_args()
 
-    # Instantiate the PDFPagesToAssistant class with the overwrite argument
-    confluence_assistant = PDFPagesToAssistant(overwrite=args.overwrite)
+    # Instantiate the FilesToAssistant class with the overwrite argument
+    confluence_assistant = FilesToAssistant(overwrite=args.overwrite)
 
-    # Upload pages to vector storage
-    confluence_assistant.upload_pages_to_vectorstorage()
+    # Upload files to vector storage
+    confluence_assistant.upload_files_to_vectorstorage()
 
     # Update assistant with the vector store
     confluence_assistant.update_assistant()
