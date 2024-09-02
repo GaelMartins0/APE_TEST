@@ -130,7 +130,7 @@ class FilesToAssistant:
 def main():
 
     # Set up command-line argument parsing
-    parser = argparse.ArgumentParser(description="Export files to VS using the Confluence API.")
+    parser = argparse.ArgumentParser(description="Export files to VS.")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing vector store if it exists")
     args = parser.parse_args()
 
