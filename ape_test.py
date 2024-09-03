@@ -1,6 +1,7 @@
 import os
 import re
 import argparse
+import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -29,6 +30,35 @@ class FilesToAssistant:
 
         # Define the name of the assistant
         self.assistant_name = f"RAG for APE"
+
+    def convert_xlsx_to_txt(self, xlsx_path):
+        try:
+            # Load the Excel file
+            xls = pd.ExcelFile(xlsx_path)
+            txt_files = []
+
+            # Iterate over each sheet and save as a separate TXT file
+            for sheet_name in xls.sheet_names:
+                df = pd.read_excel(xls, sheet_name=sheet_name)
+
+                # Define the TXT path for each sheet
+                txt_path = xlsx_path.with_name(f"{xlsx_path.stem}_{sheet_name}.txt")
+                
+                # Save the sheet content as TXT
+                df.to_csv(txt_path, sep='\t', index=False)
+                print(f"Converted {xlsx_path} - Sheet '{sheet_name}' to {txt_path}")
+
+                txt_files.append(txt_path)
+
+            # Delete the original .xlsx file after conversion
+            xlsx_path.unlink()
+            print(f"Deleted the original file: {xlsx_path}")
+
+            return txt_files
+        
+        except Exception as e:
+            print(f"Error converting {xlsx_path} to TXT: {e}")
+            return []
 
     def upload_files_to_vectorstorage(self):
         # List all vector stores to check if one with the same name already exists
@@ -60,18 +90,28 @@ class FilesToAssistant:
         # Try to open each file and handle any errors
         for path in file_paths:
             try:
-                filename = path.name
-                
-                # Check if the file already exists in OpenAI storage
-                existing_files = self.client.files.list()
-                for f in existing_files.data:
-                    if filename in f.filename:
-                        print(f"File with base name '{filename}' already exists. Deleting it...")
-                        self.client.files.delete(f.id)
-                        print(f"Deleted file with ID {f.id}")
-                
-                # Open the file for upload regardless of its type
-                file_streams.append(path.open("rb"))
+                if path.suffix == '.xlsx':
+                    # Convert .xlsx to multiple .txt files
+                    txt_paths = self.convert_xlsx_to_txt(path)
+                    if not txt_paths:
+                        continue  # Skip if conversion failed
+                else:
+                    txt_paths = [path]  # Keep the original file if it's not an Excel file
+
+                for txt_path in txt_paths:
+                    filename = txt_path.name
+
+                    # Check if the file already exists in OpenAI storage
+                    existing_files = self.client.files.list()
+                    for f in existing_files.data:
+                        if filename in f.filename:
+                            print(f"File with base name '{filename}' already exists. Deleting it...")
+                            self.client.files.delete(f.id)
+                            print(f"Deleted file with ID {f.id}")
+
+                    # Open the file for upload
+                    file_streams.append(txt_path.open("rb"))
+
             except Exception as e:
                 print(f"Error opening file {path}: {e}")
 
