@@ -50,15 +50,28 @@ class FilesToAssistant:
 
                 txt_files.append(txt_path)
 
-            # Delete the original .xlsx file after conversion
-            xlsx_path.unlink()
-            print(f"Deleted the original file: {xlsx_path}")
-
             return txt_files
         
         except Exception as e:
             print(f"Error converting {xlsx_path} to TXT: {e}")
             return []
+
+    def process_files(self):
+        # Get list of all files in output_dir directory
+        file_paths = [path for path in self.OUTPUT_DIR.iterdir() if path.is_file()]
+        txt_files = []
+        non_xlsx_files = []
+
+        # Convert .xlsx files to .txt and collect other files
+        for path in file_paths:
+            if path.suffix == '.xlsx':
+                txt_files.extend(self.convert_xlsx_to_txt(path))
+            else:
+                non_xlsx_files.append(path)
+
+        # Combine txt files and non-xlsx files for upload
+        all_files_to_upload = txt_files + non_xlsx_files
+        return all_files_to_upload, txt_files
 
     def upload_files_to_vectorstorage(self):
         # List all vector stores to check if one with the same name already exists
@@ -83,34 +96,26 @@ class FilesToAssistant:
         # Create a new vector store
         self.vector_store = self.client.beta.vector_stores.create(name=self.vector_store_name)
 
-        # Get list of all files in output_dir directory
-        file_paths = [path for path in self.OUTPUT_DIR.iterdir() if path.is_file()]
+        # Process files (conversion + deletion) and get the list of files to upload
+        files_to_upload, txt_files = self.process_files()
         file_streams = []
 
         # Try to open each file and handle any errors
-        for path in file_paths:
+        for path in files_to_upload:
             try:
-                if path.suffix == '.xlsx':
-                    # Convert .xlsx to multiple .txt files
-                    txt_paths = self.convert_xlsx_to_txt(path)
-                    if not txt_paths:
-                        continue  # Skip if conversion failed
-                else:
-                    txt_paths = [path]  # Keep the original file if it's not an Excel file
+                filename = path.name
 
-                for txt_path in txt_paths:
-                    filename = txt_path.name
+                # Check if the file already exists in OpenAI storage
+                existing_files = self.client.files.list()
+                for f in existing_files.data:
+                    if filename in f.filename:
+                        print(f"File with base name '{filename}' already exists. Deleting it...")
+                        self.client.files.delete(f.id)
+                        print(f"Deleted file with ID {f.id}")
 
-                    # Check if the file already exists in OpenAI storage
-                    existing_files = self.client.files.list()
-                    for f in existing_files.data:
-                        if filename in f.filename:
-                            print(f"File with base name '{filename}' already exists. Deleting it...")
-                            self.client.files.delete(f.id)
-                            print(f"Deleted file with ID {f.id}")
-
-                    # Open the file for upload
-                    file_streams.append(txt_path.open("rb"))
+                # Open the file for upload, excluding .xlsx files
+                if path.suffix != '.xlsx':
+                    file_streams.append(path.open("rb"))
 
             except Exception as e:
                 print(f"Error opening file {path}: {e}")
@@ -133,6 +138,14 @@ class FilesToAssistant:
                 stream.close()
             except Exception as e:
                 print(f"Error closing file stream: {e}")
+
+        # Delete the .txt files created during the conversion
+        for txt_file in txt_files:
+            try:
+                txt_file.unlink()
+                print(f"Deleted the temporary TXT file: {txt_file}")
+            except Exception as e:
+                print(f"Error deleting TXT file {txt_file}: {e}")
 
     def update_assistant(self):
         # Fetch an existing Assistant (assuming you have the assistant ID)
